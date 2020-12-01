@@ -15,6 +15,7 @@ func TestMarshalBinary(t *testing.T) {
 	it1 := s1.Iter()
 	it1.Next()
 	b, err := s1.MarshalBinary()
+	// fmt.Printf("len=%d cap=%d %v\n", len(b), cap(b), b)
 	if err != nil {
 		t.Error(err)
 	}
@@ -29,7 +30,7 @@ func TestMarshalBinary(t *testing.T) {
 			t.Fatalf("Next()=false, want true")
 		}
 		tt, vv := it.Values()
-		// t.Logf("it.Values()=(%+v, %+v)\n", time.Unix(int64(tt), 0), vv)
+		// t.Logf("it.Values()=(%+v, %+v)\n", time.Unix(0, int64(tt)*1000000), vv)
 		if w.T != tt || w.V != vv {
 			t.Errorf("Values()=(%v,%v), want (%v,%v)\n", tt, vv, w.T, w.V)
 		}
@@ -81,55 +82,59 @@ func TestExampleEncoding(t *testing.T) {
 
 	// Example from the paper
 	t0, _ := time.ParseInLocation("Jan _2 2006 15:04:05", "Mar 24 2015 02:00:00", time.Local)
-	tunix := uint32(t0.Unix())
+	tunix := uint64(t0.Unix())
 
-	s := New(tunix)
+	s := New(tunix * 1000)
 
 	tunix += 62
-	s.Push(tunix, 12)
+	s.Push(tunix*1000, 12)
+
+	// fmt.Printf("tunix=%d v=%d\n", tunix*1000, 12)
 
 	tunix += 60
-	s.Push(tunix, 12)
+	s.Push(tunix*1000, 12)
+	// fmt.Printf("tunix=%d v=%d\n", tunix*1000, 12)
 
 	tunix += 60
-	s.Push(tunix, 24)
+	s.Push(tunix*1000, 24)
+	// fmt.Printf("tunix=%d v=%d\n", tunix*1000, 24)
 
 	// extra tests
 
 	// floating point masking/shifting bug
 	tunix += 60
-	s.Push(tunix, 13)
+	s.Push(tunix*1000, 13)
 
 	tunix += 60
-	s.Push(tunix, 24)
+	s.Push(tunix*1000, 24)
 
 	// delta-of-delta sizes
 	tunix += 300 // == delta-of-delta of 240
-	s.Push(tunix, 24)
+	s.Push(tunix*1000, 24)
 
 	tunix += 900 // == delta-of-delta of 600
-	s.Push(tunix, 24)
+	s.Push(tunix*1000, 24)
 
 	tunix += 900 + 2050 // == delta-of-delta of 600
-	s.Push(tunix, 24)
+	s.Push(tunix*1000, 24)
 
 	it := s.Iter()
 
-	tunix = uint32(t0.Unix())
+	tunix = uint64(t0.Unix())
 	want := []struct {
-		t uint32
+		t uint64
 		v float64
 	}{
-		{tunix + 62, 12},
-		{tunix + 122, 12},
-		{tunix + 182, 24},
+		{(tunix + 62) * 1000, 12},
+		{(tunix + 122) * 1000, 12},
+		{(tunix + 182) * 1000, 24},
 
-		{tunix + 242, 13},
-		{tunix + 302, 24},
+		{(tunix + 242) * 1000, 13},
+		{(tunix + 302) * 1000, 24},
 
-		{tunix + 602, 24},
-		{tunix + 1502, 24},
-		{tunix + 4452, 24},
+		{(tunix + 602) * 1000, 24},
+		{(tunix + 1502) * 1000, 24},
+		{(tunix + 4452) * 1000, 24},
 	}
 
 	for _, w := range want {
@@ -305,10 +310,10 @@ func BenchmarkDecodeByteSlice(b *testing.B) {
 }
 
 func TestEncodeSimilarFloats(t *testing.T) {
-	tunix := uint32(time.Unix(0, 0).Unix())
+	tunix := uint64(time.Unix(0, 0).Unix())
 	s := New(tunix)
 	want := []struct {
-		t uint32
+		t uint64
 		v float64
 	}{
 		{tunix, 6.00065e+06},

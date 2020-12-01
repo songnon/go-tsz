@@ -21,8 +21,8 @@ type Series struct {
 	sync.Mutex
 
 	// TODO(dgryski): timestamps in the paper are uint64
-	T0  uint32
-	t   uint32
+	T0  uint64
+	t   uint64
 	val float64
 
 	bw       bstream
@@ -30,18 +30,19 @@ type Series struct {
 	trailing uint8
 	finished bool
 
-	tDelta uint32
+	tDelta uint64
 }
 
 // New series
-func New(t0 uint32) *Series {
+func New(t0 uint64) *Series {
 	s := Series{
 		T0:      t0,
 		leading: ^uint8(0),
 	}
 
 	// block header
-	s.bw.writeBits(uint64(t0), 32)
+	// s.bw.writeBits(uint64(t0), 32)
+	s.bw.writeBits(uint64(t0), 64)
 
 	return &s
 
@@ -72,7 +73,7 @@ func (s *Series) Finish() {
 }
 
 // Push a timestamp and value to the series
-func (s *Series) Push(t uint32, v float64) {
+func (s *Series) Push(t uint64, v float64) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -81,7 +82,10 @@ func (s *Series) Push(t uint32, v float64) {
 		s.t = t
 		s.val = v
 		s.tDelta = t - s.T0
-		s.bw.writeBits(uint64(s.tDelta), 14)
+		// fmt.Printf("delta=%d uDelta=%d\n", s.tDelta, uint64(s.tDelta))
+		// increase from 14 to 22 to accommodate 1 hour dataframe
+		// s.bw.writeBits(uint64(s.tDelta), 14)
+		s.bw.writeBits(uint64(s.tDelta), 22)
 		s.bw.writeBits(math.Float64bits(v), 64)
 		return
 	}
@@ -159,9 +163,9 @@ func (s *Series) Iter() *Iter {
 
 // Iter lets you iterate over a series.  It is not concurrency-safe.
 type Iter struct {
-	T0 uint32
+	T0 uint64
 
-	t   uint32
+	t   uint64
 	val float64
 
 	br       bstream
@@ -170,7 +174,7 @@ type Iter struct {
 
 	finished bool
 
-	tDelta uint32
+	tDelta uint64
 	err    error
 }
 
@@ -178,13 +182,16 @@ func bstreamIterator(br *bstream) (*Iter, error) {
 
 	br.count = 8
 
-	t0, err := br.readBits(32)
+	// block header
+	// t0, err := br.readBits(32)
+	t0, err := br.readBits(64)
+	// fmt.Printf("bstreamIterator t0=%d\n", t0)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Iter{
-		T0: uint32(t0),
+		T0: uint64(t0),
 		br: *br,
 	}, nil
 }
@@ -203,12 +210,14 @@ func (it *Iter) Next() bool {
 
 	if it.t == 0 {
 		// read first t and v
-		tDelta, err := it.br.readBits(14)
+		// increase from 14 to 22 to accommodate 1 hour dataframe
+		tDelta, err := it.br.readBits(22)
 		if err != nil {
 			it.err = err
 			return false
 		}
-		it.tDelta = uint32(tDelta)
+		it.tDelta = uint64(tDelta)
+		// fmt.Printf("Next tDelta=%d\n", it.tDelta)
 		it.t = it.T0 + it.tDelta
 		v, err := it.br.readBits(64)
 		if err != nil {
@@ -276,7 +285,7 @@ func (it *Iter) Next() bool {
 		dod = int32(bits)
 	}
 
-	tDelta := it.tDelta + uint32(dod)
+	tDelta := it.tDelta + uint64(dod)
 
 	it.tDelta = tDelta
 	it.t = it.t + it.tDelta
@@ -335,7 +344,7 @@ func (it *Iter) Next() bool {
 }
 
 // Values at the current iterator position
-func (it *Iter) Values() (uint32, float64) {
+func (it *Iter) Values() (uint64, float64) {
 	return it.t, it.val
 }
 

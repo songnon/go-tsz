@@ -1,12 +1,11 @@
 # go-tsz
 
-* Package tsz implement time-series compression http://www.vldb.org/pvldb/vol8/p1816-teller.pdf in Go*
+The original source code was cloned from [github](https://github.com/dgryski/go-tsz/tree/master). Some change was made to
+support:
 
-[![Master Branch](https://img.shields.io/badge/branch-master-lightgray.svg)](https://github.com/dgryski/go-tsz/tree/master)
-[![Master Build Status](https://secure.travis-ci.org/dgryski/go-tsz.svg?branch=master)](https://travis-ci.org/dgryski/go-tsz?branch=master)
-[![Master Coverage Status](https://coveralls.io/repos/dgryski/go-tsz/badge.svg?branch=master&service=github)](https://coveralls.io/github/dgryski/go-tsz?branch=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/dgryski/go-tsz)](https://goreportcard.com/report/github.com/dgryski/go-tsz)
-[![GoDoc](https://godoc.org/github.com/dgryski/go-tsz?status.svg)](http://godoc.org/github.com/dgryski/go-tsz)
+- millisecond timestamp
+- 1 hour time window in milliseconds
+
 
 ## Description
  
